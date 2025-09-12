@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "dgSpecHash": "iD0/43HV2kY=",
+  "success": true,
+  "projectFilePath": "/Users/imane/Desktop/EmySln/StoreApi/StoreApi.csproj",
+  "expectedPackageFiles": [
+    "/Users/imane/.nuget/packages/microsoft.aspnetcore.openapi/8.0.0-preview.4.23260.4/microsoft.aspnetcore.openapi.8.0.0-preview.4.23260.4.nupkg.sha512",
+    "/Users/imane/.nuget/packages/microsoft.extensions.apidescription.server/8.0.0/microsoft.extensions.apidescription.server.8.0.0.nupkg.sha512",
+    "/Users/imane/.nuget/packages/microsoft.openapi/1.6.25/microsoft.openapi.1.6.25.nupkg.sha512",
+    "/Users/imane/.nuget/packages/swashbuckle.aspnetcore/9.0.4/swashbuckle.aspnetcore.9.0.4.nupkg.sha512",
+    "/Users/imane/.nuget/packages/swashbuckle.aspnetcore.swagger/9.0.4/swashbuckle.aspnetcore.swagger.9.0.4.nupkg.sha512",
+    "/Users/imane/.nuget/packages/swashbuckle.aspnetcore.swaggergen/9.0.4/swashbuckle.aspnetcore.swaggergen.9.0.4.nupkg.sha512",
+    "/Users/imane/.nuget/packages/swashbuckle.aspnetcore.swaggerui/9.0.4/swashbuckle.aspnetcore.swaggerui.9.0.4.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "StoreApi dipende da Microsoft.AspNetCore.OpenApi (>= 8.0.0-preview.3.25172.1) ma non è stato possibile trovare Microsoft.AspNetCore.OpenApi 8.0.0-preview.3.25172.1. È stata risolta una migliore corrispondenza approssimativa di Microsoft.AspNetCore.OpenApi 8.0.0-preview.4.23260.4.",
+      "libraryId": "Microsoft.AspNetCore.OpenApi",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    }
+  ]
+}
