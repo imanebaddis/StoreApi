@@ -1,15 +1,5 @@
 using StoreApi.Infra.Repositories;
-using StoreApi.Infra.Repositories;
 using StoreApi.Infra.Services;
-
-// ... existing code ...
-
-// Register repositories
-builder.Services.AddSingleton<ISubscriptionRepository, InMemorySubscriptionRepository>();
-
-// Register services
-builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
-builder.Services.AddScoped<IBankCardService, BankCardService>();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,8 +8,15 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// DI per il repository
+// Register repositories
 builder.Services.AddSingleton<IBookRepository, InMemoryBookRepository>();
+builder.Services.AddSingleton<ISubscriptionRepository, InMemorySubscriptionRepository>();
+builder.Services.AddSingleton<IBankCardRepository, InMemoryBankCardRepository>();
+builder.Services.AddSingleton<IUserRepository, InMemoryUserRepository>();
+
+// Register services
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<IBankCardService, BankCardService>();
 
 var app = builder.Build();
 

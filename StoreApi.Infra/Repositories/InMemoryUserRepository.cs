@@ -8,6 +8,12 @@ namespace StoreApi.Infra.Repositories {
         private readonly List<User> _users = new();
         private int _nextId = 1;
 
+        public InMemoryUserRepository()
+        {
+            // Seed some test data to match the bank card test data
+            SeedData();
+        }
+
         public IEnumerable<User> GetAll() => _users;
 
         public User GetById(int id) => _users.FirstOrDefault(u => u.Id == id);
@@ -53,5 +59,35 @@ namespace StoreApi.Infra.Repositories {
 
         public bool EmailExists(string email) =>
             _users.Any(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+
+        private void SeedData()
+        {
+            // Add test users that match the bank card test data
+            _users.AddRange(new[]
+            {
+                new User
+                {
+                    Id = _nextId++,
+                    Username = "johndoe",
+                    Email = "john.doe@example.com",
+                    PasswordHash = "hashedpassword123",
+                    FirstName = "John",
+                    LastName = "Doe",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-30)
+                },
+                new User
+                {
+                    Id = _nextId++,
+                    Username = "janesmith",
+                    Email = "jane.smith@example.com",
+                    PasswordHash = "hashedpassword456",
+                    FirstName = "Jane",
+                    LastName = "Smith",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-15)
+                }
+            });
+        }
     }
 }

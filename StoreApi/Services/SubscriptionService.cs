@@ -112,7 +112,7 @@ namespace StoreApi.Infra.Services {
         }
 
         public void AutoRenewSubscription(int subscriptionId) {
-            _subscriptionRepo.AutoRenewSubscription(subscriptionId);
+            _subscriptionRepo.RenewSubscription(subscriptionId);
         }
 
         private SubscriptionResponseDto MapToResponseDto(Subscription subscription, User user) {

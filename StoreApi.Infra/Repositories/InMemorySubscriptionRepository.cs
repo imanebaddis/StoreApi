@@ -77,5 +77,14 @@ namespace StoreApi.Infra.Repositories {
                 subscription.EndDate = subscription.EndDate?.AddMonths(1) ?? DateTime.UtcNow.AddMonths(1);
             }
         }
+
+        public void RenewSubscription(int subscriptionId) {
+            var subscription = GetById(subscriptionId);
+            if (subscription != null) {
+                // Renew subscription by extending the end date by one month
+                subscription.EndDate = subscription.EndDate?.AddMonths(1) ?? DateTime.UtcNow.AddMonths(1);
+                subscription.IsActive = true;
+            }
+        }
     }
 }

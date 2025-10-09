@@ -10,5 +10,6 @@ namespace StoreApi.Infra.Services {
         void CancelSubscription(int subscriptionId);
         IEnumerable<SubscriptionPlanDto> GetAvailablePlans();
         bool CanAccessBook(int userId, int bookId);
+        void AutoRenewSubscription(int subscriptionId);
     }
 }
