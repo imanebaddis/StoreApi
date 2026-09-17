@@ -208,3 +208,4 @@ ModelManifest.xml
 .env
 .env.*
 !*.example
+/dotnet-install.sh

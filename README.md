@@ -10,6 +10,8 @@ Progetto d'esame PMO: API ASP.NET Core in `StoreApi/`, modelli e repository in `
 
 La versione attuale è un prototipo locale. Le API di scrittura non hanno ancora autorizzazione; non esporre il server su Internet. La gestione password e carte esistente richiede una revisione prima di usarla con dati reali.
 
+Il progetto F# nella radice, le viste MVC e `wwwroot/lib` appartengono al vecchio template e non sono l'interfaccia BookStore corrente. Le librerie vendorizzate restano con le rispettive licenze per non rompere quel template.
+
 ## Avvio locale
 
 Seguire [DATABASE_SETUP.md](DATABASE_SETUP.md) per configurare la connessione server senza includere credenziali nel repository e installare la tabella libri. Avviare l'API in Development su `http://127.0.0.1:5187`, poi avviare `BookStore.Web/server.js` con Node.js 18 o superiore. L'interfaccia è su `http://localhost:4173` e usa l'API reale per impostazione predefinita.
