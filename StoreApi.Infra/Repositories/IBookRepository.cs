@@ -5,6 +5,7 @@ namespace StoreApi.Infra.Repositories {
         IEnumerable<Book> GetAll();
         Book? GetById(int id);
         Book Add(Book book);
+        Book ImportOpenLibrary(Book book);
         void Update(Book book);
         void Delete(int id);
     }

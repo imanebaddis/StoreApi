@@ -1,6 +1,7 @@
 using StoreApi.Infra.Repositories;
 using StoreApi.Infra.Services;
 using Npgsql;
+using StoreApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -39,6 +40,13 @@ if (args.Contains("--check-books-schema") || args.Contains("--apply-books-schema
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient("OpenLibrary", client =>
+{
+    client.BaseAddress = new Uri("https://openlibrary.org");
+    client.Timeout = TimeSpan.FromSeconds(8);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("BookStorePMO/1.0 (educational project; contact via GitHub imanebaddis/StoreApi)");
+});
+builder.Services.AddSingleton(sp => new OpenLibraryService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("OpenLibrary")));
 
 // Register repositories
 var demoMode = builder.Configuration.GetValue<bool>("BookStore:DemoMode");

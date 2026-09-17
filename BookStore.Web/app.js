@@ -12,19 +12,20 @@ const demoBooks = [
   { id: 11, title: 'L’amica geniale', author: 'Elena Ferrante', category: 'Narrativa', year: '2011', description: 'Due amiche crescono in un quartiere di Napoli, intrecciando ambizioni, rivalità e legami lungo gli anni.', tone: 'rose', symbol: '❋' }
 ];
 
-const state = { books: demoBooks, source: 'demo', query: '', category: 'Tutti', favorites: readFavorites() };
+const state = { books: demoBooks, source: 'demo', query: '', category: 'Tutti', favorites: readFavorites(), viewed: readViewed() };
 const app = document.querySelector('#app');
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const slug = (book) => `${state.source}:${book.id}`;
 const categories = () => ['Tutti', ...new Set(state.books.map(book => book.category))];
 
 function readFavorites() { try { return new Set(JSON.parse(localStorage.getItem('bookstore-favorites-v2') || '[]')); } catch { return new Set(); } }
+function readViewed() { try { return new Set(JSON.parse(localStorage.getItem('bookstore-viewed-v1') || '[]')); } catch { return new Set(); } }
 function saveFavorites() { localStorage.setItem('bookstore-favorites-v2', JSON.stringify([...state.favorites])); document.querySelector('#favorite-count').textContent = [...state.favorites].filter(key => key.startsWith(`${state.source}:`)).length; }
 function bookCard(book) {
   const saved = state.favorites.has(slug(book));
   return `<article class="book-card"><a class="cover-link" href="#/libro/${encodeURIComponent(book.id)}" aria-label="Apri ${esc(book.title)}"><div class="book-cover tone-${esc(book.tone)}"><span class="cover-symbol" aria-hidden="true">${esc(book.symbol)}</span><span class="cover-title">${esc(book.title)}</span><span class="cover-author">${esc(book.author)}</span></div></a><div class="card-meta"><span>${esc(book.category)}</span><button class="favorite-button ${saved ? 'is-saved' : ''}" type="button" data-favorite="${esc(book.id)}" aria-label="${saved ? 'Rimuovi dai' : 'Aggiungi ai'} preferiti: ${esc(book.title)}" aria-pressed="${saved}">${saved ? '♥' : '♡'}</button></div><h3><a href="#/libro/${encodeURIComponent(book.id)}">${esc(book.title)}</a></h3><p>${esc(book.author)}</p></article>`;
 }
-function sourceNotice() { const message = state.source === 'api-demo' ? 'API BookStore collegata in modalità demo: libri temporanei, senza database.' : state.source === 'api' ? 'Catalogo collegato all’API BookStore con dati persistenti. L’API fornisce titolo e autore.' : 'Modalità demo locale: libri di esempio, senza database collegato.'; return `<div class="source-notice" role="status"><span class="status-dot ${state.source !== 'demo' ? 'live' : ''}"></span><span>${message}</span></div>`; }
+function sourceNotice() { const message = state.source === 'api-demo' ? 'API BookStore collegata in modalità demo: libri temporanei, senza database.' : state.source === 'api' ? 'Catalogo collegato all’API BookStore con dati persistenti.' : 'Modalità demo locale: libri di esempio, senza database collegato.'; return `<div class="source-notice" role="status"><span class="status-dot ${state.source !== 'demo' ? 'live' : ''}"></span><span>${message}</span></div>`; }
 function home() {
   const featured = state.books[0];
   app.innerHTML = `<section class="hero"><div class="hero-copy"><p class="hero-kicker">La tua prossima lettura inizia qui</p><h1>Apri un libro.<br>Trova un mondo.</h1><p class="hero-text">Storie da scoprire, autori da incontrare, pagine da scegliere con calma.</p><div class="hero-actions"><a class="button-primary" href="#/catalogo">Esplora il catalogo <span aria-hidden="true">↗</span></a><span>${state.books.length} libri da sfogliare</span></div></div><div class="hero-art" aria-hidden="true"><div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div><div class="hero-book hero-back"></div><div class="hero-book hero-front"><span>BOOK<br>STORE</span><i>✦</i><small>STORIE DA SCEGLIERE</small></div><div class="hero-caption">Una storia per ogni momento</div></div></section>${sourceNotice()}<section class="section-intro"><div><p class="section-kicker">Da dove iniziare</p><h2>Una selezione da sfogliare</h2></div><a class="text-link" href="#/catalogo">Vedi tutto il catalogo <span aria-hidden="true">↗</span></a></section><div class="book-grid">${state.books.slice(0, 4).map(bookCard).join('')}</div><section class="closing-band"><span aria-hidden="true">✦</span><p>Ogni libro è un invito a guardare più lontano.</p><a href="#/catalogo">Trova la tua prossima lettura</a></section>`;
@@ -37,12 +38,64 @@ function catalog(favoritesOnly = false) {
   input.addEventListener('input', e => { const start = e.target.selectionStart; state.query = e.target.value; catalog(favoritesOnly); const next = document.querySelector('#search'); next.focus(); next.setSelectionRange(start, start); });
 }
 function detail(id) {
+  if (state.books.some(b => String(b.id) === id)) { state.viewed.add(`${state.source}:${id}`); localStorage.setItem('bookstore-viewed-v1', JSON.stringify([...state.viewed])); }
   const book = state.books.find(b => String(b.id) === id);
   if (!book) { app.innerHTML = `<div class="empty-state"><h1>Libro non trovato</h1><p>Questo titolo non è presente nel catalogo disponibile.</p><a href="#/catalogo">Torna al catalogo</a></div>`; return; }
   const saved = state.favorites.has(slug(book));
   app.innerHTML = `<div class="breadcrumbs"><a href="#/catalogo">Catalogo</a><span aria-hidden="true">/</span><span>${esc(book.title)}</span></div>${sourceNotice()}<article class="detail-layout"><div class="detail-cover-wrap"><div class="book-cover detail-cover tone-${esc(book.tone)}"><span class="cover-symbol" aria-hidden="true">${esc(book.symbol)}</span><span class="cover-title">${esc(book.title)}</span><span class="cover-author">${esc(book.author)}</span></div><p>Copertina illustrativa del prototipo</p></div><div class="detail-copy"><span class="category-pill">${esc(book.category)}</span><h1>${esc(book.title)}</h1><p class="detail-author">di ${esc(book.author)}</p><div class="detail-rule"></div><h2>Il libro</h2><p class="description">${esc(book.description)}</p><div class="detail-facts"><div><span>Autore</span><strong>${esc(book.author)}</strong></div><div><span>Categoria</span><strong>${esc(book.category)}</strong></div>${book.year ? `<div><span>Anno</span><strong>${esc(book.year)}</strong></div>` : ''}</div><button class="button-primary detail-save" type="button" data-favorite="${esc(book.id)}" aria-pressed="${saved}">${saved ? '♥ Salvato nei preferiti' : '♡ Aggiungi ai preferiti'}</button><p class="detail-footnote">I preferiti sono salvati solo in questo browser.</p></div></article><section class="related"><div class="section-intro"><div><p class="section-kicker">Continua a esplorare</p><h2>Altre storie da scoprire</h2></div></div><div class="book-grid">${state.books.filter(b => b.id !== book.id).slice(0, 4).map(bookCard).join('')}</div></section>`;
+  if (book.sourceUrl) {
+    const attribution = document.createElement('p');
+    const link = document.createElement('a');
+    link.href = book.sourceUrl; link.target = '_blank'; link.rel = 'noopener noreferrer';
+    link.textContent = 'Metadati: Open Library';
+    attribution.append(link);
+    document.querySelector('.detail-copy').append(attribution);
+  }
+}
+function discovery() {
+  app.innerHTML = `<section class="page-heading"><p class="section-kicker">Open Library</p><h1>Cerca libri veri</h1><p>Trova un titolo e aggiungilo al catalogo BookStore.</p></section><form id="external-search" class="catalog-tools"><label class="search-field"><span class="sr-only">Titolo o autore</span><input name="q" type="search" minlength="3" maxlength="100" required placeholder="Titolo o autore"></label><button class="button-primary" type="submit">Cerca</button></form><p id="external-status" role="status"></p><div id="external-results" class="book-grid"></div><p>Metadati: <a href="https://openlibrary.org" target="_blank" rel="noopener noreferrer">Open Library</a>. La ricerca mostra fino a 10 risultati.</p>`;
+  document.querySelector('#external-search').addEventListener('submit', async e => {
+    e.preventDefault();
+    const q = new FormData(e.currentTarget).get('q');
+    const status = document.querySelector('#external-status');
+    const results = document.querySelector('#external-results');
+    status.textContent = 'Ricerca in corso…'; results.replaceChildren();
+    try {
+      const response = await fetch(`/api/discovery/search?q=${encodeURIComponent(q)}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Ricerca non disponibile');
+      status.textContent = `${data.length} risultati`;
+      results.innerHTML = data.map(b => `<article class="book-card"><h3>${esc(b.title)}</h3><p>${esc(b.author)}${b.firstPublishYear ? ` · ${esc(b.firstPublishYear)}` : ''}</p><p><a href="${esc(b.sourceUrl)}" target="_blank" rel="noopener noreferrer">Scheda Open Library</a></p><button type="button" class="button-primary" data-import="${esc(b.key)}">Aggiungi al catalogo</button></article>`).join('');
+    } catch (error) { status.textContent = error.message; }
+  });
+  document.querySelector('#external-results').addEventListener('click', async e => {
+    const button = e.target.closest('[data-import]');
+    if (!button) return;
+    button.disabled = true; button.textContent = 'Aggiunta in corso…';
+    try {
+      const response = await fetch('/api/discovery/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: button.dataset.import }) });
+      const book = await response.json();
+      if (!response.ok) throw new Error(book.error || 'Importazione non disponibile');
+      if (!state.books.some(b => b.id === book.id)) state.books.push({ id: book.id, title: book.title, author: book.author, category: book.subject || 'Altri libri', year: book.firstPublishYear || '', description: 'Metadati da Open Library.', tone: 'blue', symbol: '✦', sourceUrl: `https://openlibrary.org${book.openLibraryKey}` });
+      button.textContent = 'Nel catalogo';
+    } catch (error) { button.disabled = false; button.textContent = 'Riprova'; document.querySelector('#external-status').textContent = error.message; }
+  });
+}
+
+function recommendations() {
+  const favorites = state.books.filter(b => state.favorites.has(slug(b)));
+  const viewed = state.books.filter(b => state.viewed.has(slug(b)));
+  const ranked = state.books.filter(b => !state.favorites.has(slug(b))).map(book => {
+    const favoriteCategory = favorites.some(f => f.category === book.category);
+    const viewedCategory = viewed.some(f => f.category === book.category);
+    const sameAuthor = favorites.some(f => f.author === book.author);
+    return { book, score: (sameAuthor ? 4 : 0) + (favoriteCategory ? 3 : 0) + (viewedCategory ? 1 : 0), reason: sameAuthor ? `Hai salvato un libro di ${book.author}` : favoriteCategory ? `Hai salvato libri della categoria ${book.category}` : viewedCategory ? `Hai visto libri della categoria ${book.category}` : 'Da esplorare nel catalogo' };
+  }).sort((a, b) => b.score - a.score || a.book.id - b.book.id).slice(0, 6);
+  app.innerHTML = `<section class="page-heading"><p class="section-kicker">Per te</p><h1>Consigli di lettura</h1><p>Suggerimenti basati sui preferiti e sui libri aperti in questo browser.</p></section>${sourceNotice()}<div class="book-grid">${ranked.map(r => `<div>${bookCard(r.book)}<p>${esc(r.reason)}</p></div>`).join('')}</div>`;
 }
 function route() {
+  if (location.hash.startsWith('#/cerca')) { document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === 'discovery')); discovery(); saveFavorites(); return; }
+  if (location.hash.startsWith('#/consigli')) { document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === 'recommendations')); recommendations(); saveFavorites(); return; }
   const [_, page, id] = location.hash.match(/^#\/(?:([^/]+))?(?:\/([^/]+))?/) || [];
   document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === (page === 'catalogo' ? 'catalog' : page === 'preferiti' ? 'favorites' : !page ? 'home' : '')));
   if (page === 'catalogo') catalog(); else if (page === 'preferiti') catalog(true); else if (page === 'libro') detail(decodeURIComponent(id || '')); else home();
@@ -66,6 +119,12 @@ async function loadBooks() {
       const normalized = value => String(value || '').normalize('NFKD').replace(/[’‘]/g, "'").toLocaleLowerCase('it');
       const matching = demoBooks.find(d => normalized(d.title) === normalized(b.title));
       return { id: b.id, title: b.title || 'Senza titolo', author: b.author || 'Autore non indicato', category: matching?.category || 'Altri libri', year: matching?.year || '', description: matching?.description || 'La descrizione non è ancora disponibile nel catalogo API.', tone: matching?.tone || ['indigo','moss','blue','amber','rose','teal','plum','forest'][index % 8], symbol: matching?.symbol || '✦' };
+    });
+    state.books.forEach(book => {
+      const source = data.find(item => item.id === book.id);
+      if (source?.subject && book.category === 'Altri libri') book.category = source.subject;
+      if (source?.firstPublishYear && !book.year) book.year = source.firstPublishYear;
+      if (/^\/works\/OL[0-9]+W$/.test(source?.openLibraryKey || '')) book.sourceUrl = `https://openlibrary.org${source.openLibraryKey}`;
     });
   } catch { state.source = 'demo'; state.books = demoBooks; }
   route();

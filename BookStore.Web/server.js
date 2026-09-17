@@ -10,9 +10,21 @@ const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascrip
 
 http.createServer(async (req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
-  if (pathname === '/api/books' || /^\/api\/books\/\d+$/.test(pathname)) {
+  if (pathname === '/api/books' || /^\/api\/books\/\d+$/.test(pathname) || pathname === '/api/discovery/search' || pathname === '/api/discovery/import') {
     try {
-      const response = await fetch(new URL(pathname, api), { signal: AbortSignal.timeout(2500) });
+      if (pathname === '/api/discovery/import' && req.method !== 'POST') { res.writeHead(405); res.end(); return; }
+      if (pathname === '/api/discovery/search' && req.method !== 'GET') { res.writeHead(405); res.end(); return; }
+      const target = new URL(pathname + (pathname === '/api/discovery/search' ? new URL(req.url, 'http://localhost').search : ''), api);
+      let body;
+      if (req.method === 'POST') {
+        const chunks = [];
+        for await (const chunk of req) {
+          chunks.push(chunk);
+          if (Buffer.concat(chunks).length > 1024) { res.writeHead(413); res.end(); return; }
+        }
+        body = Buffer.concat(chunks);
+      }
+      const response = await fetch(target, { method: req.method, body, headers: body ? { 'Content-Type': 'application/json' } : {}, signal: AbortSignal.timeout(10000) });
       res.writeHead(response.status, { 'Content-Type': response.headers.get('content-type') || 'application/json', 'X-BookStore-Mode': dataMode });
       res.end(Buffer.from(await response.arrayBuffer()));
     } catch {

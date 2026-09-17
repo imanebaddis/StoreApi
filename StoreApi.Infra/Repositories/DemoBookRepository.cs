@@ -20,6 +20,13 @@ public sealed class DemoBookRepository : IBookRepository
         _books.Add(book);
         return book;
     }
+    public Book ImportOpenLibrary(Book book)
+    {
+        var existing = _books.FirstOrDefault(b => b.OpenLibraryKey == book.OpenLibraryKey ||
+            (string.Equals(b.Title.Trim(), book.Title.Trim(), StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(b.Author.Trim(), book.Author.Trim(), StringComparison.OrdinalIgnoreCase)));
+        return existing ?? Add(book);
+    }
     public void Update(Book book)
     {
         var existing = GetById(book.Id);
