@@ -194,3 +194,17 @@ ModelManifest.xml
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Local build and credential tooling
+**/bin/
+**/obj/
+**/bin-check/
+.dotnet-home/
+.nuget-packages/
+**/.dotnet-home/
+**/.nuget-packages/
+*.user
+*.suo
+.env
+.env.*
+!*.example

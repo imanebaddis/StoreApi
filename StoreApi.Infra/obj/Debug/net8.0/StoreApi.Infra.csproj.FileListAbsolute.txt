@@ -1,4 +1,0 @@
-/Users/imane/Desktop/EmySln/StoreApi.Infra/obj/Debug/net8.0/StoreApi.Infra.GeneratedMSBuildEditorConfig.editorconfig
-/Users/imane/Desktop/EmySln/StoreApi.Infra/obj/Debug/net8.0/StoreApi.Infra.AssemblyInfoInputs.cache
-/Users/imane/Desktop/EmySln/StoreApi.Infra/obj/Debug/net8.0/StoreApi.Infra.AssemblyInfo.cs
-/Users/imane/Desktop/EmySln/StoreApi.Infra/obj/Debug/net8.0/StoreApi.Infra.csproj.CoreCompileInputs.cache
