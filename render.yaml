@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: bookstore-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: BookStore__DemoMode
+        value: "false"
+      - key: Supabase__Url
+        value: https://qpwjzzmnqxtexelhpfqm.supabase.co
+      - key: ConnectionStrings__StoreDb
+        sync: false
+      - key: BookStore__AllowedOrigins
+        sync: false
+  - type: web
+    name: bookstore-web
+    runtime: static
+    rootDir: BookStore.Web
+    buildCommand: node build.js
+    staticPublishPath: dist
+    envVars:
+      - key: BOOKSTORE_API_URL
+        sync: false
+      - key: BOOKSTORE_DATA_MODE
+        value: api
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_GOOGLE_ENABLED
+        value: "true"

@@ -149,6 +149,7 @@ ClientBin/
 *.pfx
 *.publishsettings
 node_modules/
+BookStore.Web/dist/
 orleans.codegen.cs
 
 # RIA/Silverlight projects
@@ -199,6 +200,7 @@ ModelManifest.xml
 **/bin/
 **/obj/
 **/bin-check/
+/publish-check/
 .dotnet-home/
 .nuget-packages/
 **/.dotnet-home/
@@ -209,3 +211,4 @@ ModelManifest.xml
 .env.*
 !*.example
 /dotnet-install.sh
+/BookStore.Web/dist/

@@ -12,6 +12,8 @@ const demoBooks = [
   { id: 11, title: 'L’amica geniale', author: 'Elena Ferrante', category: 'Narrativa', year: '2011', description: 'Due amiche crescono in un quartiere di Napoli, intrecciando ambizioni, rivalità e legami lungo gli anni.', tone: 'rose', symbol: '❋' }
 ];
 
+const webConfig = window.BOOKSTORE_CONFIG || {};
+const apiUrl = path => `${webConfig.apiBaseUrl || ''}${path}`;
 const state = { books: demoBooks, source: 'demo', query: '', category: 'Tutti', favorites: readFavorites() };
 const app = document.querySelector('#app');
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -57,11 +59,11 @@ document.addEventListener('click', e => {
 window.addEventListener('hashchange', () => { state.query = ''; state.category = 'Tutti'; route(); window.scrollTo(0, 0); });
 async function loadBooks() {
   try {
-    const response = await fetch('/api/books');
+    const response = await fetch(apiUrl('/api/books'));
     if (!response.ok) throw new Error('API non disponibile');
     const data = await response.json();
     if (!Array.isArray(data)) throw new Error('Risposta non valida');
-    state.source = response.headers.get('X-BookStore-Mode') === 'demo' ? 'api-demo' : 'api';
+    state.source = (response.headers.get('X-BookStore-Mode') || webConfig.dataMode) === 'demo' ? 'api-demo' : 'api';
     state.books = data.map((b, index) => {
       const normalized = value => String(value || '').normalize('NFKD').replace(/[’‘]/g, "'").toLocaleLowerCase('it');
       const matching = demoBooks.find(d => normalized(d.title) === normalized(b.title));

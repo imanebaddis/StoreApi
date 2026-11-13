@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 using StoreApi.Infra.Models;
 using StoreApi.Infra.DTOs;
@@ -20,6 +21,7 @@ public class BooksController : ControllerBase {
     }
 
     [HttpPost]
+    [Authorize(Policy = "BookAdmin")]
     public ActionResult<Book> Create(BookDto dto) {
         var book = new Book { Title = dto.Title, Author = dto.Author };
         var created = _repo.Add(book);
@@ -27,6 +29,7 @@ public class BooksController : ControllerBase {
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "BookAdmin")]
     public IActionResult Update(int id, BookDto dto) {
         var book = _repo.GetById(id);
         if (book == null) return NotFound();
@@ -37,6 +40,7 @@ public class BooksController : ControllerBase {
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "BookAdmin")]
     public IActionResult Delete(int id) {
         var book = _repo.GetById(id);
         if (book == null) return NotFound();
