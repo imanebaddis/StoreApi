@@ -6,7 +6,7 @@ namespace StoreApi.Payments;
 
 [ApiController]
 [Route("api/payments")]
-public sealed class PaymentsController(PaymentStore store, PayPalClient paypal, SupabaseUser users, IConfiguration config) : ControllerBase
+public sealed class PaymentsController(PaymentStore store, PayPalClient paypal, SupabaseUser users, IConfiguration config, ILogger<PaymentsController> logger) : ControllerBase
 {
     private static readonly Dictionary<string, decimal> Prices = new(StringComparer.OrdinalIgnoreCase) {
         ["Basic"] = 4m, ["Silver"] = 7m, ["Gold"] = 10m
@@ -86,11 +86,16 @@ public sealed class PaymentsController(PaymentStore store, PayPalClient paypal, 
         var eventType = webhook.GetProperty("event_type").GetString();
         var resource = webhook.GetProperty("resource");
         if (eventType is "PAYMENT.CAPTURE.REFUNDED" or "PAYMENT.CAPTURE.REVERSED") {
-            if (resource.TryGetProperty("supplementary_data", out var extra) &&
-                extra.TryGetProperty("related_ids", out var related) &&
-                related.TryGetProperty("capture_id", out var original))
-                await store.RevokeByCaptureAsync(original.GetString()!, ct);
-            return Ok();
+            var target = PayPalWebhook.ReadRefundTarget(eventType, resource);
+            if (target.IsEmpty) {
+                // Never acknowledge a refund that could not be matched: a 2xx would leave access active.
+                logger.LogWarning("PayPal {EventType} webhook carries no capture or order ID; access was not revoked", eventType);
+                return UnprocessableEntity();
+            }
+            if (await store.RevokeAsync(target.CaptureIds, target.OrderId, ct)) return Ok();
+            // The payment may not be recorded yet (refund delivered before completion). Let PayPal retry.
+            logger.LogWarning("PayPal {EventType} webhook matches no payment yet; asking PayPal to retry", eventType);
+            return StatusCode(503);
         }
         if (eventType != "PAYMENT.CAPTURE.COMPLETED") return Ok();
         if (resource.GetProperty("status").GetString() != "COMPLETED") return Ok();
@@ -99,7 +104,8 @@ public sealed class PaymentsController(PaymentStore store, PayPalClient paypal, 
         var value = decimal.Parse(amount.GetProperty("value").GetString()!, CultureInfo.InvariantCulture);
         var payment = await store.GetByOrderAsync(orderId, ct);
         if (payment is null) return StatusCode(503); // Let PayPal retry until the create request commits.
-        if (payment.Status == "completed") return Ok();
+        // A refunded payment stays refunded: a late completion event must not grant access again.
+        if (payment.Status is "completed" or "refunded") return Ok();
         return await store.CompleteAsync(orderId, resource.GetProperty("id").GetString()!, value, amount.GetProperty("currency_code").GetString()!, ct) ? Ok() : Conflict();
     }
 }

@@ -25,7 +25,7 @@ L'utente deve [aprire e verificare un conto PayPal Business](https://developer.p
 ## Limiti aperti
 
 - Mancano conto Business verificato, credenziali sandbox/live, dominio HTTPS pubblico e collegamento UI/auth dell'altra attività: nessun pagamento reale è stato eseguito.
-- La revoca da webhook richiede che l'evento PayPal includa `supplementary_data.related_ids.capture_id`. Verificare l'evento effettivo sandbox per rimborsi parziali; in caso di rimborso parziale l'implementazione revoca l'intero mese per prudenza.
+- La revoca da webhook cerca il pagamento tramite `supplementary_data.related_ids` (capture o ordine), il link `rel=up` verso la capture e, per i reversal, l'ID della risorsa. Se l'evento non contiene alcun riferimento risponde 422 e lo registra nei log; se il pagamento non è ancora registrato risponde 503 perché PayPal ritenti. Un pagamento rimborsato non può più essere completato. Queste forme dell'evento sono verificate solo con dati simulati: controllare gli eventi effettivi in sandbox, anche per i rimborsi parziali; in caso di rimborso parziale l'implementazione revoca l'intero mese per prudenza.
 - Non sono implementati rinnovi automatici, upgrade di piano, prorata o piani ricorrenti PayPal. Se è richiesto un addebito mensile automatico, serve una seconda integrazione con PayPal Subscriptions API e la relativa gestione del ciclo di vita.
 - La migrazione non è stata applicata a Supabase e la prova end-to-end con PayPal non è possibile senza accesso agli account. Il progetto compila e gli endpoint legacy sono stati verificati localmente in modalità demo.
 

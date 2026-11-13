@@ -58,10 +58,26 @@ public sealed class PaymentStore(NpgsqlDataSource db)
         return (bool)(await cmd.ExecuteScalarAsync(ct) ?? false);
     }
 
-    public async Task RevokeByCaptureAsync(string captureId, CancellationToken ct)
+    // Marks the payment refunded whatever its current state, so a completion that
+    // arrives later cannot grant access (CompleteAsync only accepts pending/approved).
+    // Returns false when no payment matches, so the caller can ask for a retry.
+    public async Task<bool> RevokeAsync(IReadOnlyCollection<string> captureIds, string? orderId, CancellationToken ct)
     {
-        await using var cmd = db.CreateCommand("update store.payments set status='refunded',access_until=now() where paypal_capture_id=@capture and status='completed'");
-        cmd.Parameters.AddWithValue("capture", captureId);
-        await cmd.ExecuteNonQueryAsync(ct);
+        const string match = "(paypal_capture_id = any(@captures) or (@order::text is not null and paypal_order_id = @order))";
+        await using var connection = await db.OpenConnectionAsync(ct);
+        await using var update = new NpgsqlCommand($"update store.payments set status='refunded',access_until=now() where {match} and status in ('pending','approved','completed')", connection);
+        AddMatch(update);
+        if (await update.ExecuteNonQueryAsync(ct) > 0) return true;
+
+        // Already refunded by an earlier delivery of the same event: nothing left to do.
+        await using var check = new NpgsqlCommand($"select exists(select 1 from store.payments where {match} and status='refunded')", connection);
+        AddMatch(check);
+        return (bool)(await check.ExecuteScalarAsync(ct) ?? false);
+
+        void AddMatch(NpgsqlCommand cmd)
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("captures", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Text) { Value = captureIds.ToArray() });
+            cmd.Parameters.Add(new NpgsqlParameter("order", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object?)orderId ?? DBNull.Value });
+        }
     }
 }

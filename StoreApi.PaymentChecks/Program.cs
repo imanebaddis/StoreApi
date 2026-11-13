@@ -43,7 +43,27 @@ request.Headers.Authorization = "Bearer invalid-token-with-length";
 Check(await users.GetIdAsync(request, default) is null, "invalid bearer rejected");
 request.Headers.Authorization = "Bearer valid-token-with-length";
 Check(await users.GetIdAsync(request, default) == Guid.Parse("11111111-1111-1111-1111-111111111111"), "Supabase validated identity");
+
+// Refund and reversal webhooks: the capture ID must be found wherever PayPal puts it.
+var related = Refund("PAYMENT.CAPTURE.REFUNDED", "{\"id\":\"REFUND1\",\"supplementary_data\":{\"related_ids\":{\"capture_id\":\"CAP1\",\"order_id\":\"ORDER1\"}}}");
+Check(related.CaptureIds.SequenceEqual(new[] { "CAP1" }) && related.OrderId == "ORDER1", "refund target from related IDs");
+var linked = Refund("PAYMENT.CAPTURE.REFUNDED", "{\"id\":\"REFUND1\",\"links\":[{\"rel\":\"self\",\"href\":\"https://api.paypal.com/v2/payments/refunds/REFUND1\"},{\"rel\":\"up\",\"href\":\"https://api.paypal.com/v2/payments/captures/CAP2\"}]}");
+Check(linked.CaptureIds.SequenceEqual(new[] { "CAP2" }) && linked.OrderId is null, "refund target from up link");
+Check(!linked.CaptureIds.Contains("REFUND1"), "refund ID is not mistaken for a capture ID");
+var reversed = Refund("PAYMENT.CAPTURE.REVERSED", "{\"id\":\"CAP3\"}");
+Check(reversed.CaptureIds.SequenceEqual(new[] { "CAP3" }), "reversal target from resource ID");
+var both = Refund("PAYMENT.CAPTURE.REFUNDED", "{\"supplementary_data\":{\"related_ids\":{\"capture_id\":\"CAP1\"}},\"links\":[{\"rel\":\"up\",\"href\":\"https://api.paypal.com/v2/payments/captures/CAP1\"}]}");
+Check(both.CaptureIds.Count == 1, "duplicate capture IDs collapsed");
+Check(Refund("PAYMENT.CAPTURE.REFUNDED", "{\"id\":\"REFUND1\"}").IsEmpty, "refund without target is reported as unmatched");
+Check(Refund("PAYMENT.CAPTURE.REFUNDED", "{\"supplementary_data\":{\"related_ids\":{\"capture_id\":null}},\"links\":[{\"rel\":\"up\",\"href\":\"not a url\"}]}").IsEmpty, "malformed refund target rejected without throwing");
+Check(Refund("PAYMENT.CAPTURE.REFUNDED", "[]").IsEmpty, "non-object resource rejected without throwing");
 Console.WriteLine("Payment client checks passed.");
+
+static PayPalWebhook.RefundTarget Refund(string eventType, string resourceJson)
+{
+    using var document = JsonDocument.Parse(resourceJson);
+    return PayPalWebhook.ReadRefundTarget(eventType, document.RootElement);
+}
 
 static HttpResponseMessage Json(string content) => new(HttpStatusCode.OK) { Content = new StringContent(content, Encoding.UTF8, "application/json") };
 static void Check(bool condition, string name) { if (!condition) throw new Exception("Failed: " + name); }
