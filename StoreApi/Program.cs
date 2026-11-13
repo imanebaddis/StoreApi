@@ -1,6 +1,7 @@
 using StoreApi.Infra.Repositories;
 using StoreApi.Infra.Services;
 using Npgsql;
+using StoreApi.Payments;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -58,6 +59,7 @@ else
 
     builder.Services.AddSingleton(NpgsqlDataSource.Create(databaseConnection));
     builder.Services.AddScoped<IBookRepository, PostgresBookRepository>();
+    builder.Services.AddScoped<PaymentStore>();
 }
 builder.Services.AddSingleton<ISubscriptionRepository, InMemorySubscriptionRepository>();
 builder.Services.AddSingleton<IBankCardRepository, InMemoryBankCardRepository>();
@@ -66,6 +68,8 @@ builder.Services.AddSingleton<IUserRepository, InMemoryUserRepository>();
 // Register services
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IBankCardService, BankCardService>();
+builder.Services.AddHttpClient<PayPalClient>();
+builder.Services.AddHttpClient<SupabaseUser>();
 
 var app = builder.Build();
 
@@ -77,6 +81,28 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+// Old endpoints grant access after a simulated card payment. Keep their plan list
+// temporarily for the UI, but never allow them to issue or renew entitlements.
+app.Use(async (context, next) => {
+    var path = context.Request.Path.Value ?? "";
+    if (demoMode && path.StartsWith("/api/payments", StringComparison.OrdinalIgnoreCase)) {
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        await context.Response.WriteAsJsonAsync(new { error = "Payments require the persistent database" });
+        return;
+    }
+    if (path.StartsWith("/api/subscriptions", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/subscriptions/plans", StringComparison.OrdinalIgnoreCase)) {
+        context.Response.StatusCode = StatusCodes.Status410Gone;
+        await context.Response.WriteAsJsonAsync(new { error = "Use authenticated PayPal checkout and /api/payments/access" });
+        return;
+    }
+    if (!app.Environment.IsDevelopment() && path.StartsWith("/api/users", StringComparison.OrdinalIgnoreCase)) {
+        context.Response.StatusCode = StatusCodes.Status410Gone;
+        await context.Response.WriteAsJsonAsync(new { error = "Legacy user accounts are disabled" });
+        return;
+    }
+    await next(context);
+});
 
 // Endpoint minimal API (facoltativo, può coesistere con i controller)
 var summaries = new[]
