@@ -10,17 +10,18 @@ const root = __dirname;
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json' };
 
 http.createServer(async (req, res) => {
-  const pathname = new URL(req.url, 'http://localhost').pathname;
+  const { pathname, search } = new URL(req.url, 'http://localhost');
   if (pathname === '/config.js') {
     res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(configScript());
     return;
   }
-  if (pathname === '/api/me' || pathname === '/api/books' || /^\/api\/books\/\d+$/.test(pathname)) {
+  if (pathname === '/api/me' || /^\/api\/(books|categories)(\/\d+)?$/.test(pathname)) {
     if (req.method !== 'GET') { res.writeHead(405); res.end(); return; }
     try {
       const headers = pathname === '/api/me' && req.headers.authorization ? { Authorization: req.headers.authorization } : {};
-      const response = await fetch(new URL(pathname, api), { headers, signal: AbortSignal.timeout(5000) });
+      const query = /^\/api\/books$/.test(pathname) ? search : '';
+      const response = await fetch(new URL(pathname + query, api), { headers, signal: AbortSignal.timeout(5000) });
       res.writeHead(response.status, { 'Content-Type': response.headers.get('content-type') || 'application/json', 'Cache-Control': 'no-store', 'X-BookStore-Mode': dataMode });
       res.end(Buffer.from(await response.arrayBuffer()));
     } catch {

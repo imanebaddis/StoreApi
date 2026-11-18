@@ -9,7 +9,7 @@ The API accepts signed Supabase Auth access tokens from this project's Auth serv
 3. In Supabase Authentication, configure the local site URL and redirect allow list for the frontend's callback URL. Configure Google under Authentication > Providers with the Google Cloud OAuth web client ID and secret. Google's authorized redirect URI is the Supabase Auth callback shown by the provider settings, not the API URL.
 4. The frontend signs in through Supabase Auth, then sends `Authorization: Bearer <access_token>` to the API. `GET /api/me` returns the verified user ID, email claim, and BookStore role. The first successful request creates a `customer` profile.
 
-`GET /api/Books` is public. Book creation, update, and deletion require the `admin` profile role; unauthenticated requests return 401 and authenticated customers return 403. Promote only a known user after independently verifying their `auth.users.id`, using a privileged database session:
+`GET /api/Books` and `GET /api/categories` are public. Book and category creation, update, and deletion require the `admin` profile role (policy `BookAdmin`); unauthenticated requests return 401 and authenticated customers return 403. Promote only a known user after independently verifying their `auth.users.id`, using a privileged database session:
 
 ```sql
 update store.profiles set role = 'admin' where user_id = '<verified-user-uuid>';

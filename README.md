@@ -29,11 +29,12 @@ Tracciamento Attività Utente e Raccomandazioni Attività: Implementare il tracc
 
 ## Stato attuale
 
-- Catalogo libri: API CRUD e persistenza PostgreSQL su Supabase tramite `store.books`.
-- Interfaccia: catalogo, ricerca, dettagli e preferiti locali nel browser. Per i titoli dimostrativi arricchisce la presentazione con contenuti statici.
+- Catalogo libri: API CRUD e persistenza PostgreSQL su Supabase tramite `store.books`, con categoria facoltativa per ogni libro.
+- Categorie: API CRUD su `store.categories` (script `database/003_categories.sql`). Lettura pubblica, scritture riservate al ruolo `admin` come per i libri.
+- Interfaccia: catalogo, ricerca, filtro per le categorie fornite dall'API, dettagli e preferiti locali nel browser. Per i titoli dimostrativi arricchisce la presentazione con contenuti statici.
 - Utenti, abbonamenti e carte: implementazioni ancora in memoria. Il pagamento è simulato.
 
-La versione attuale è un prototipo locale. Le API di scrittura non hanno ancora autorizzazione; non esporre il server su Internet. La gestione password e carte esistente richiede una revisione prima di usarla con dati reali.
+La versione attuale è un prototipo locale. Le API di scrittura su libri e categorie richiedono un token Supabase Auth con ruolo `admin` (vedi [AUTH_SETUP.md](AUTH_SETUP.md)). La gestione password e carte esistente richiede una revisione prima di usarla con dati reali.
 
 Il progetto F# nella radice, le viste MVC e `wwwroot/lib` appartengono al vecchio template e non sono l'interfaccia BookStore corrente. Le librerie vendorizzate restano con le rispettive licenze per non rompere quel template.
 
@@ -42,3 +43,17 @@ Il progetto F# nella radice, le viste MVC e `wwwroot/lib` appartengono al vecchi
 Seguire [DATABASE_SETUP.md](DATABASE_SETUP.md) per configurare la connessione server senza includere credenziali nel repository e installare la tabella libri. Avviare l'API in Development su `http://127.0.0.1:5187`, poi avviare `BookStore.Web/server.js` con Node.js 18 o superiore. L'interfaccia è su `http://localhost:4173` e usa l'API reale per impostazione predefinita.
 
 Per provare senza Supabase, usare `BookStore__DemoMode=true` in Development e avviare l'API sulla porta 5178; il frontend può usare `BOOKSTORE_API_URL=http://127.0.0.1:5178` e `BOOKSTORE_DATA_MODE=demo`.
+
+## Endpoint del catalogo
+
+| Metodo e rotta | Accesso | Note |
+| --- | --- | --- |
+| `GET /api/books` | pubblico | Facoltativo `?categoryId=<id>` per filtrare per categoria. Ogni libro include `categoryId` e `categoryName`. |
+| `GET /api/books/{id}` | pubblico | |
+| `POST /api/books`, `PUT /api/books/{id}`, `DELETE /api/books/{id}` | `admin` | Corpo: `title`, `author`, `categoryId` facoltativo. Una categoria inesistente restituisce 400. `PUT` sostituisce il libro: senza `categoryId` il libro resta senza categoria. |
+| `GET /api/categories` | pubblico | Elenco ordinato per nome: `id`, `name`, `description`. |
+| `GET /api/categories/{id}` | pubblico | 404 se assente. |
+| `POST /api/categories`, `PUT /api/categories/{id}` | `admin` | Corpo: `name` (1–80 caratteri), `description` facoltativa (max 500). Nome duplicato, anche con maiuscole diverse: 409. |
+| `DELETE /api/categories/{id}` | `admin` | I libri della categoria restano nel catalogo senza categoria. |
+
+Senza token le scritture restituiscono 401; con un utente non amministratore 403; con dati non validi 400.

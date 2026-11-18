@@ -13,7 +13,7 @@ node server.js
 
 Aprire <http://localhost:4174>.
 
-Il server tenta di leggere `GET /api/books` dall'API con database su `http://127.0.0.1:5187`. L'API deve essere avviata e configurata secondo `../DATABASE_SETUP.md`. Per usare un altro indirizzo:
+Il server inoltra all'API soltanto richieste GET su `/api/books`, `/api/categories` (anche `/{id}`) e `/api/me`. Tenta di leggere `GET /api/books` dall'API con database su `http://127.0.0.1:5187`. L'API deve essere avviata e configurata secondo `../DATABASE_SETUP.md`. Per usare un altro indirizzo:
 
 ```powershell
 $env:BOOKSTORE_API_URL = 'http://127.0.0.1:5187'
@@ -31,7 +31,7 @@ dotnet run --project ..\StoreApi\StoreApi.csproj --no-launch-profile --urls http
 
 Poi avviare il frontend con `BOOKSTORE_API_URL=http://127.0.0.1:5178` e `BOOKSTORE_DATA_MODE=demo`.
 
-Quando l'API non risponde, il catalogo mostra libri di esempio e una chiara indicazione di modalità demo locale. Quando l'API risponde, titolo e autore arrivano dall'API. L'API attuale non fornisce categoria, descrizione, anno o immagini: per i titoli di esempio la UI aggiunge contenuti dimostrativi; per altri titoli usa una categoria generica e segnala che la descrizione non è disponibile. Le copertine sono composizioni grafiche illustrative. Impostare `BOOKSTORE_DATA_MODE=api` solo quando l'API usa il database persistente.
+Quando l'API non risponde, il catalogo mostra libri di esempio e una chiara indicazione di modalità demo locale. Quando l'API risponde, titolo, autore e categoria (`categoryName`) arrivano dall'API e i filtri del catalogo mostrano le categorie di `GET /api/categories`. Se un libro non ha categoria la UI usa quella del titolo di esempio corrispondente, altrimenti «Altri libri»; se l'elenco delle categorie non è disponibile i filtri si ricavano dai libri. L'API non fornisce descrizione, anno o immagini: per i titoli di esempio la UI aggiunge contenuti dimostrativi; per gli altri segnala che la descrizione non è disponibile. Le copertine sono composizioni grafiche illustrative. Impostare `BOOKSTORE_DATA_MODE=api` solo quando l'API usa il database persistente.
 
 I preferiti sono conservati nel browser locale. Abbonamenti, pagamenti e raccomandazioni non fanno parte di questo incremento.
 

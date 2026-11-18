@@ -14,11 +14,11 @@ const demoBooks = [
 
 const webConfig = window.BOOKSTORE_CONFIG || {};
 const apiUrl = path => `${webConfig.apiBaseUrl || ''}${path}`;
-const state = { books: demoBooks, source: 'demo', query: '', category: 'Tutti', favorites: readFavorites() };
+const state = { books: demoBooks, apiCategories: [], source: 'demo', query: '', category: 'Tutti', favorites: readFavorites() };
 const app = document.querySelector('#app');
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const slug = (book) => `${state.source}:${book.id}`;
-const categories = () => ['Tutti', ...new Set(state.books.map(book => book.category))];
+const categories = () => ['Tutti', ...new Set([...state.apiCategories.map(category => category.name), ...state.books.map(book => book.category)])];
 
 function readFavorites() { try { return new Set(JSON.parse(localStorage.getItem('bookstore-favorites-v2') || '[]')); } catch { return new Set(); } }
 function saveFavorites() { localStorage.setItem('bookstore-favorites-v2', JSON.stringify([...state.favorites])); document.querySelector('#favorite-count').textContent = [...state.favorites].filter(key => key.startsWith(`${state.source}:`)).length; }
@@ -26,7 +26,7 @@ function bookCard(book) {
   const saved = state.favorites.has(slug(book));
   return `<article class="book-card"><a class="cover-link" href="#/libro/${encodeURIComponent(book.id)}" aria-label="Apri ${esc(book.title)}"><div class="book-cover tone-${esc(book.tone)}"><span class="cover-symbol" aria-hidden="true">${esc(book.symbol)}</span><span class="cover-title">${esc(book.title)}</span><span class="cover-author">${esc(book.author)}</span></div></a><div class="card-meta"><span>${esc(book.category)}</span><button class="favorite-button ${saved ? 'is-saved' : ''}" type="button" data-favorite="${esc(book.id)}" aria-label="${saved ? 'Rimuovi dai' : 'Aggiungi ai'} preferiti: ${esc(book.title)}" aria-pressed="${saved}">${saved ? '♥' : '♡'}</button></div><h3><a href="#/libro/${encodeURIComponent(book.id)}">${esc(book.title)}</a></h3><p>${esc(book.author)}</p></article>`;
 }
-function sourceNotice() { const message = state.source === 'api-demo' ? 'API BookStore collegata in modalità demo: libri temporanei, senza database.' : state.source === 'api' ? 'Catalogo collegato all’API BookStore con dati persistenti. L’API fornisce titolo e autore.' : 'Modalità demo locale: libri di esempio, senza database collegato.'; return `<div class="source-notice" role="status"><span class="status-dot ${state.source !== 'demo' ? 'live' : ''}"></span><span>${message}</span></div>`; }
+function sourceNotice() { const message = state.source === 'api-demo' ? 'API BookStore collegata in modalità demo: libri temporanei, senza database.' : state.source === 'api' ? 'Catalogo collegato all’API BookStore con dati persistenti. L’API fornisce titolo, autore e categoria.' : 'Modalità demo locale: libri di esempio, senza database collegato.'; return `<div class="source-notice" role="status"><span class="status-dot ${state.source !== 'demo' ? 'live' : ''}"></span><span>${message}</span></div>`; }
 function home() {
   const featured = state.books[0];
   app.innerHTML = `<section class="hero"><div class="hero-copy"><p class="hero-kicker">La tua prossima lettura inizia qui</p><h1>Apri un libro.<br>Trova un mondo.</h1><p class="hero-text">Storie da scoprire, autori da incontrare, pagine da scegliere con calma.</p><div class="hero-actions"><a class="button-primary" href="#/catalogo">Esplora il catalogo <span aria-hidden="true">↗</span></a><span>${state.books.length} libri da sfogliare</span></div></div><div class="hero-art" aria-hidden="true"><div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div><div class="hero-book hero-back"></div><div class="hero-book hero-front"><span>BOOK<br>STORE</span><i>✦</i><small>STORIE DA SCEGLIERE</small></div><div class="hero-caption">Una storia per ogni momento</div></div></section>${sourceNotice()}<section class="section-intro"><div><p class="section-kicker">Da dove iniziare</p><h2>Una selezione da sfogliare</h2></div><a class="text-link" href="#/catalogo">Vedi tutto il catalogo <span aria-hidden="true">↗</span></a></section><div class="book-grid">${state.books.slice(0, 4).map(bookCard).join('')}</div><section class="closing-band"><span aria-hidden="true">✦</span><p>Ogni libro è un invito a guardare più lontano.</p><a href="#/catalogo">Trova la tua prossima lettura</a></section>`;
@@ -57,19 +57,28 @@ document.addEventListener('click', e => {
   if (category) { state.category = category.dataset.category; catalog(location.hash.startsWith('#/preferiti')); }
 });
 window.addEventListener('hashchange', () => { state.query = ''; state.category = 'Tutti'; route(); window.scrollTo(0, 0); });
+async function loadCategories() {
+  try {
+    const response = await fetch(apiUrl('/api/categories'));
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data) ? data.filter(c => c && typeof c.name === 'string' && c.name.trim()).map(c => ({ id: c.id, name: c.name })) : [];
+  } catch { return []; }
+}
 async function loadBooks() {
   try {
-    const response = await fetch(apiUrl('/api/books'));
+    const [response, apiCategories] = await Promise.all([fetch(apiUrl('/api/books')), loadCategories()]);
     if (!response.ok) throw new Error('API non disponibile');
     const data = await response.json();
     if (!Array.isArray(data)) throw new Error('Risposta non valida');
     state.source = (response.headers.get('X-BookStore-Mode') || webConfig.dataMode) === 'demo' ? 'api-demo' : 'api';
+    state.apiCategories = apiCategories;
     state.books = data.map((b, index) => {
       const normalized = value => String(value || '').normalize('NFKD').replace(/[’‘]/g, "'").toLocaleLowerCase('it');
       const matching = demoBooks.find(d => normalized(d.title) === normalized(b.title));
-      return { id: b.id, title: b.title || 'Senza titolo', author: b.author || 'Autore non indicato', category: matching?.category || 'Altri libri', year: matching?.year || '', description: matching?.description || 'La descrizione non è ancora disponibile nel catalogo API.', tone: matching?.tone || ['indigo','moss','blue','amber','rose','teal','plum','forest'][index % 8], symbol: matching?.symbol || '✦' };
+      return { id: b.id, title: b.title || 'Senza titolo', author: b.author || 'Autore non indicato', categoryId: b.categoryId ?? null, category: b.categoryName || matching?.category || 'Altri libri', year: matching?.year || '', description: matching?.description || 'La descrizione non è ancora disponibile nel catalogo API.', tone: matching?.tone || ['indigo','moss','blue','amber','rose','teal','plum','forest'][index % 8], symbol: matching?.symbol || '✦' };
     });
-  } catch { state.source = 'demo'; state.books = demoBooks; }
+  } catch { state.source = 'demo'; state.books = demoBooks; state.apiCategories = []; }
   route();
 }
 loadBooks();

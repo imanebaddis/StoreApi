@@ -5,7 +5,8 @@ namespace StoreApi.Infra.Repositories {
     public class InMemoryBookRepository : IBookRepository {
         private readonly List<Book> _books = new();
         private int _nextId = 1;
-        public IEnumerable<Book> GetAll() => _books;
+        public IEnumerable<Book> GetAll(int? categoryId = null) =>
+            categoryId is null ? _books : _books.Where(b => b.CategoryId == categoryId);
         public Book GetById(int id) => _books.FirstOrDefault(b => b.Id == id);
         public Book Add(Book book) {
             book.Id = _nextId++;
@@ -17,6 +18,7 @@ namespace StoreApi.Infra.Repositories {
             if (existing != null) {
                 existing.Title = book.Title;
                 existing.Author = book.Author;
+                existing.CategoryId = book.CategoryId;
             }
         }
         public void Delete(int id) {

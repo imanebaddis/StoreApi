@@ -11,7 +11,9 @@ The repository contains the backend Dockerfile and `render.yaml` for a **Free** 
 5. On `bookstore-web`, set `BOOKSTORE_API_URL` to the backend's actual HTTPS `onrender.com` URL and `SUPABASE_PUBLISHABLE_KEY` to the project's `sb_publishable_...` key. Both are public browser configuration, but the key should still be copied directly into Render and kept out of this document. The Blueprint sets `SUPABASE_GOOGLE_ENABLED=true` because the provider is now verified active. Confirm `ASPNETCORE_ENVIRONMENT=Production`, `BookStore__DemoMode=false`, and `Supabase__Url=https://qpwjzzmnqxtexelhpfqm.supabase.co` for the API. Render provides `PORT`; the API listens on it automatically.
 6. Deploy. If the Blueprint needs the backend URL before its first build, deploy the API first or retry the static site build after its URL is available. Check `/healthz` returns 200, `/api/Books` returns the persisted catalog, and unauthenticated book writes return 401. Google OAuth, `/api/me` as a customer, and logout have passed locally on `localhost:4174`; repeat these checks on Render HTTPS. An administrator flow has not yet been verified.
 
-The database migrations `001_books.sql` and `002_profiles.sql` have already been applied to the existing Supabase project. Do not run them automatically at every deploy. Legacy in-memory user and subscription endpoints are not compiled into the public API. Payments are not enabled.
+The database migrations `001_books.sql` and `002_profiles.sql` have already been applied to the existing Supabase project. Do not run them automatically at every deploy.
+
+**Categorie:** `003_categories.sql` non è ancora stato applicato a Supabase. Va applicato una sola volta (vedi `DATABASE_SETUP.md`) **prima** di distribuire la versione dell'API con le categorie, altrimenti anche il catalogo libri restituisce errore. Legacy in-memory user and subscription endpoints are not compiled into the public API. Payments are not enabled.
 
 ## Domain and OAuth
 

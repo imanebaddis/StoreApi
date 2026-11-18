@@ -15,3 +15,19 @@ This does not create or change a remote database automatically. Applying the SQL
 ## Local demo without Supabase
 
 For a local prototype, run in `Development` with `BookStore__DemoMode=true` and bind to `http://127.0.0.1:5178`. This uses three sample books in memory and needs no database credentials. Data resets when the process restarts. Demo mode refuses to start outside Development.
+
+## Categorie dei libri (`003_categories.sql`)
+
+Lo script `database/003_categories.sql` crea `store.categories` (nome obbligatorio di 1–80 caratteri e unico senza distinzione tra maiuscole e minuscole, descrizione facoltativa fino a 500 caratteri, `created_at`), abilita Row Level Security e revoca l'accesso ad `anon` e `authenticated` come per `store.profiles`. Aggiunge a `store.books` la colonna facoltativa `category_id` con chiave esterna `on delete set null` e relativo indice: eliminando una categoria i libri restano nel catalogo senza categoria. Inserisce infine le categorie iniziali Narrativa, Classici, Saggi e Scienza (ignorate se già presenti).
+
+Lo script richiede che `001_books.sql` sia già applicato. Verificare lo stato con:
+
+```powershell
+dotnet run --project StoreApi/StoreApi.csproj -- --check-categories-schema
+```
+
+Il comando mostra le colonne di `store.categories` e di `store.books`. Se `store.categories` è assente nel progetto Supabase confermato, applicare lo script una sola volta con `--apply-categories-schema` (rifiuta di procedere se la tabella esiste già) oppure dall'editor SQL di Supabase.
+
+**Ordine obbligatorio:** applicare `003_categories.sql` **prima** di avviare o distribuire la versione dell'API che include le categorie. Le letture dei libri usano un `left join` su `store.categories`: senza lo script anche `GET /api/books` restituirebbe errore.
+
+I libri già presenti restano senza categoria finché un amministratore non li aggiorna con `PUT /api/books/{id}` indicando `categoryId`.

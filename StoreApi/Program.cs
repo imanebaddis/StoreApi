@@ -17,22 +17,30 @@ if (builder.Configuration["PORT"] is { } portValue)
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
 
-if (args.Contains("--check-books-schema") || args.Contains("--apply-books-schema") ||
-    args.Contains("--check-profiles-schema") || args.Contains("--apply-profiles-schema"))
+// Migrazioni manuali: ogni coppia --check/--apply corrisponde a uno script in database/.
+var schemaMigrations = new[]
+{
+    (Table: "books", Script: "001_books.sql"),
+    (Table: "profiles", Script: "002_profiles.sql"),
+    (Table: "categories", Script: "003_categories.sql")
+};
+var requestedMigration = schemaMigrations.FirstOrDefault(migration =>
+    args.Contains($"--check-{migration.Table}-schema") || args.Contains($"--apply-{migration.Table}-schema"));
+if (requestedMigration.Table is not null)
 {
     var connectionString = builder.Configuration.GetConnectionString("StoreDb")
         ?? throw new InvalidOperationException("Configure ConnectionStrings:StoreDb in user-secrets first.");
     await using var dataSource = NpgsqlDataSource.Create(connectionString);
-    var profilesSchema = args.Contains("--check-profiles-schema") || args.Contains("--apply-profiles-schema");
-    var tableName = profilesSchema ? "profiles" : "books";
-    await using var existsCommand = dataSource.CreateCommand($"select to_regclass('store.{tableName}') is not null");
+    var tableName = requestedMigration.Table;
+    await using var existsCommand = dataSource.CreateCommand("select to_regclass(@qualified_name) is not null");
+    existsCommand.Parameters.AddWithValue("qualified_name", $"store.{tableName}");
     var exists = (bool)(await existsCommand.ExecuteScalarAsync() ?? false);
 
-    if (args.Contains("--apply-books-schema") || args.Contains("--apply-profiles-schema"))
+    if (args.Contains($"--apply-{tableName}-schema"))
     {
         if (exists)
             throw new InvalidOperationException($"store.{tableName} already exists; inspect it before applying a migration.");
-        var scriptName = profilesSchema ? "002_profiles.sql" : "001_books.sql";
+        var scriptName = requestedMigration.Script;
         var scriptPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "database", scriptName));
         var script = await File.ReadAllTextAsync(scriptPath);
         await using var applyCommand = dataSource.CreateCommand(script);
@@ -40,13 +48,18 @@ if (args.Contains("--check-books-schema") || args.Contains("--apply-books-schema
         Console.WriteLine($"Applied database/{scriptName}.");
     }
 
-    await using var columnsCommand = dataSource.CreateCommand(
-        "select column_name, data_type from information_schema.columns " +
-        $"where table_schema = 'store' and table_name = '{tableName}' order by ordinal_position");
-    await using var columns = await columnsCommand.ExecuteReaderAsync();
-    var found = new List<string>();
-    while (await columns.ReadAsync()) found.Add($"{columns.GetString(0)} ({columns.GetString(1)})");
-    Console.WriteLine(found.Count == 0 ? $"store.{tableName} is absent." : $"store.{tableName}: " + string.Join(", ", found));
+    var inspectedTables = tableName == "categories" ? new[] { "categories", "books" } : new[] { tableName };
+    foreach (var inspectedTable in inspectedTables)
+    {
+        await using var columnsCommand = dataSource.CreateCommand(
+            "select column_name, data_type from information_schema.columns " +
+            "where table_schema = 'store' and table_name = @table_name order by ordinal_position");
+        columnsCommand.Parameters.AddWithValue("table_name", inspectedTable);
+        await using var columns = await columnsCommand.ExecuteReaderAsync();
+        var found = new List<string>();
+        while (await columns.ReadAsync()) found.Add($"{columns.GetString(0)} ({columns.GetString(1)})");
+        Console.WriteLine(found.Count == 0 ? $"store.{inspectedTable} is absent." : $"store.{inspectedTable}: " + string.Join(", ", found));
+    }
     return;
 }
 
@@ -103,6 +116,7 @@ if (demoMode)
 {
     if (!builder.Environment.IsDevelopment())
         throw new InvalidOperationException("BookStore:DemoMode is available only in Development.");
+    builder.Services.AddSingleton<ICategoryRepository, DemoCategoryRepository>();
     builder.Services.AddSingleton<IBookRepository, DemoBookRepository>();
 }
 else
@@ -115,6 +129,7 @@ else
 
     builder.Services.AddSingleton(NpgsqlDataSource.Create(databaseConnection));
     builder.Services.AddScoped<IBookRepository, PostgresBookRepository>();
+    builder.Services.AddScoped<ICategoryRepository, PostgresCategoryRepository>();
     builder.Services.AddScoped<StoreProfileService>();
     builder.Services.AddScoped<IAuthorizationHandler, StoreAdminHandler>();
 }
